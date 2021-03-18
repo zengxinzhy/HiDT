@@ -14,6 +14,7 @@ from hidt.utils.base import module_list_forward
 
 from typing import List
 
+
 class ContentEncoderBase(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -24,14 +25,17 @@ class ContentEncoderBase(nn.Module):
         self.output_dim = dim
 
     def forward(self, tensor, spade_input=None):
-        model = chain(self.model_preparation, self.model_downsample, self.model_postprocess)
+        model = chain(self.model_preparation,
+                      self.model_downsample, self.model_postprocess)
         return module_list_forward(model, tensor, spade_input)
 
 
 class ContentEncoderBC(ContentEncoderBase):
     def __init__(self, num_downsamples, num_blocks, input_dim, dim, norm, activ, pad_type, non_local=False, **kwargs):
         super().__init__(dim)
-        self.model_preparation += [Conv2dBlock(input_dim, dim, 9, 1, 4, norm=norm, activation=activ, pad_type=pad_type)]
+
+        self.model_preparation += [Conv2dBlock(
+            input_dim, dim, 9, 1, 4, norm=norm, activation=activ, pad_type=pad_type)]
         # downsampling blocks
         for i in range(num_downsamples):
             self.model_downsample += [
@@ -50,9 +54,9 @@ class ContentEncoderUnet(ContentEncoderBC):
             self.skip_dim = [self.skip_dim] * kwargs['num_downsamples']
 
     def forward(self, tensor: torch.Tensor):
-        output : List[torch.Tensor] = []
-        for layer in self.model_preparation:
-            tensor = layer(tensor)
+        output: List[torch.Tensor] = []
+        model_preparation = nn.Sequential(*self.model_preparation)
+        tensor = model_preparation(tensor)
         #tensor = module_list_forward(self.model_preparation, tensor, spade_input)
 
         for layer in self.model_downsample:
@@ -64,9 +68,8 @@ class ContentEncoderUnet(ContentEncoderBC):
             output.append(out)
             tensor = layer(tensor)
 
-
-        for layer in self.model_postprocess:
-            tensor = layer(tensor)
+        model_postprocess = nn.Sequential(*self.model_postprocess)
+        tensor = model_postprocess(tensor)
         #tensor = module_list_forward(self.model_postprocess, tensor, spade_input)
         output.append(tensor)
         output_reversed: List[torch.Tensor] = [output[2], output[1], output[0]]

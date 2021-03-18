@@ -40,7 +40,7 @@ class StyleTransformer:
 
         self.trainer = getattr(trainers, self.config['trainer'])(self.config)
         if checkpoint_path is not None:
-            state_dict = torch.load(checkpoint_path)
+            state_dict = torch.load(checkpoint_path, map_location='cpu')
             state_dict_fixed = dict()
             for key in state_dict:
                 state_dict_fixed[key.replace('module.', '')] = state_dict[key]
@@ -83,7 +83,6 @@ class StyleTransformer:
                 equally_sized_batch = False
             output.append(self.image_transformers[mode](
                 cur_image).to(self.device))
-
         if len(output) > 1:
             if equally_sized_batch:
                 return [torch.stack(output)]
@@ -204,7 +203,8 @@ class StyleTransformer:
                                                                   batch_size=batch_size,
                                                                   )[0] * 0.5 + 0.5
                 for trans_tensor in translated_tensors.unbind(0):
-                    batch_translated.append(TF.to_pil_image(trans_tensor.cpu()) if return_pil else trans_tensor)
+                    batch_translated.append(TF.to_pil_image(
+                        trans_tensor.cpu()) if return_pil else trans_tensor)
             output_translated.append(batch_translated)
 
         return output_translated

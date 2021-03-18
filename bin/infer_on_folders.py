@@ -54,7 +54,6 @@ def main():
 
     result_path = os.path.join(args.output_dir, 'results/')
     os.makedirs(result_path, exist_ok=True)
-    print("result path : ", result_path)
 
     source_images_path = glob.glob(os.path.join(args.data_dir, '*'))
     style_images_path = glob.glob(os.path.join(args.style_dir, '*'))

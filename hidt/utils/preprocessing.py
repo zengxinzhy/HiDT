@@ -21,9 +21,11 @@ def pytorch_preprocess(batch):
     batch = torch.stack(batch_color_transformed, 0)
 
     batch = torch.clamp(batch, 0, 1)
-    mean = torch.tensor([.485, .456, .406], dtype=batch.dtype, device=batch.device)[None, :, None, None]
+    mean = torch.tensor([.485, .456, .406], dtype=batch.dtype,
+                        device=batch.device)[None, :, None, None]
     batch = batch.sub(mean)  # subtract mean
-    std = torch.tensor([.229, .224, .225], dtype=batch.dtype, device=batch.device)[None, :, None, None]
+    std = torch.tensor([.229, .224, .225], dtype=batch.dtype,
+                       device=batch.device)[None, :, None, None]
     batch = batch.div(std)
     return batch
 
@@ -44,10 +46,8 @@ def get_params(opt, size):
         else:
             new_w = opt['load_size'] * w // h
             new_h = opt['load_size']
-
     x = random.randint(0, np.maximum(0, new_w - opt['crop_image_width']))
     y = random.randint(0, np.maximum(0, new_h - opt['crop_image_height']))
-
     flip = random.random() > 0.5
 
     return {'preprocess': opt['preprocess'], 'no_flip': opt['no_flip'], 'load_size': opt['load_size'],
@@ -65,7 +65,8 @@ def get_transform(params, method=Image.BICUBIC, convert=True):
         osize = [params['load_size'], params['load_size']]
         transform_list.append(transforms.Resize(osize, method))
     elif 'scale_width' in params['preprocess']:
-        transform_list.append(transforms.Lambda(lambda img: __scale_width(img, params['load_size'], method)))
+        transform_list.append(transforms.Lambda(
+            lambda img: __scale_width(img, params['load_size'], method)))
     elif 'scale_shorter_side' in params['preprocess']:
         transform_list.append(transforms.Lambda(lambda img: __scale(img,
                                                                     params['new_size'][0],
@@ -76,20 +77,23 @@ def get_transform(params, method=Image.BICUBIC, convert=True):
 
     if 'crop' in params['preprocess']:
         if params is None:
-            transform_list.append(transforms.RandomCrop((params['crop_image_width'], params['crop_image_height'])))
+            transform_list.append(transforms.RandomCrop(
+                (params['crop_image_width'], params['crop_image_height'])))
         else:
             transform_list.append(transforms.Lambda(lambda img: __crop(img, params['crop_pos'],
                                                                        params['crop_image_width'],
                                                                        params['crop_image_height'])))
 
     if params['preprocess'] == 'none':
-        transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base=RESIZE_BASE, method=method)))
+        transform_list.append(transforms.Lambda(
+            lambda img: __make_power_2(img, base=RESIZE_BASE, method=method)))
 
     if not params['no_flip']:
         if params is None:
             transform_list.append(transforms.RandomHorizontalFlip())
         elif params.get('flip', False):
-            transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
+            transform_list.append(transforms.Lambda(
+                lambda img: __flip(img, params['flip'])))
 
     if convert:
         if params['color_space'] == 'labeled':
@@ -98,12 +102,13 @@ def get_transform(params, method=Image.BICUBIC, convert=True):
         else:
             transform_list += [transforms.ToTensor()]
             if params['dequantization']:
-                transform_list += [transforms.Lambda(lambda x: __dequantization(x))]
+                transform_list += [transforms.Lambda(
+                    lambda x: __dequantization(x))]
             if params['color_space'] == 'grayscale':
                 transform_list += [transforms.Normalize((0.5,), (0.5,))]
             else:
-                transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-
+                transform_list += [transforms.Normalize(
+                    (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     return transforms.Compose(transform_list)
 
 
@@ -197,6 +202,7 @@ def __scale_width(img, target_width, method=Image.BICUBIC):
         return img
     w = target_width
     h = int(target_width * oh / ow)
+    print("__scale_width", w, h)
     return img.resize((w, h), method)
 
 

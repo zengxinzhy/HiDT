@@ -26,10 +26,12 @@ class GeneratorBase(nn.Module):
             frozen = module_config_copy.pop('frozen', False)
 
             if 'input_data' in module_config_copy:
-                module_config_copy['input_dim'] = get_total_data_dim(module_config_copy['input_data'])
+                module_config_copy['input_dim'] = get_total_data_dim(
+                    module_config_copy['input_data'])
                 module_config_copy.pop('input_data')
             if 'output_data' in module_config_copy:
-                module_config_copy['output_dim'] = get_total_data_dim(module_config_copy['output_data'])
+                module_config_copy['output_dim'] = get_total_data_dim(
+                    module_config_copy['output_data'])
                 module_config_copy.pop('output_data')
 
             logger.debug(f'Building {module_name} with {architecture}')

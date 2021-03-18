@@ -199,9 +199,11 @@ class Conv2dBlock(nn.Module):
 
         # initialize convolution
         if norm == 'sn':
-            self.conv = SpectralNorm(nn.Conv2d(input_dim, output_dim, kernel_size, stride, bias=self.use_bias))
+            self.conv = SpectralNorm(
+                nn.Conv2d(input_dim, output_dim, kernel_size, stride, bias=self.use_bias))
         else:
-            self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride, bias=self.use_bias)
+            self.conv = nn.Conv2d(input_dim, output_dim,
+                                  kernel_size, stride, bias=self.use_bias)
 
         self.style = None
 
@@ -223,7 +225,8 @@ class Conv2dBlock(nn.Module):
         if self.compute_kernel:
             conv_kernel = self.mlp_kernel(self.style)
             conv_bias = self.mlp_bias(self.style)
-            x = F.conv2d(self.pad(x), conv_kernel.view(*self.dim), conv_bias.view(-1), self.stride)
+            x = F.conv2d(self.pad(x), conv_kernel.view(
+                *self.dim), conv_bias.view(-1), self.stride)
         else:
             x = self.conv(self.pad(x))
         if self.WCT:
@@ -253,7 +256,8 @@ class LinearBlock(nn.Module):
         use_bias = True
         # initialize fully connected layer
         if norm == 'sn':
-            self.fc = SpectralNorm(nn.Linear(input_dim, output_dim, bias=use_bias))
+            self.fc = SpectralNorm(
+                nn.Linear(input_dim, output_dim, bias=use_bias))
         else:
             self.fc = nn.Linear(input_dim, output_dim, bias=use_bias)
 

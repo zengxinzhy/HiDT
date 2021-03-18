@@ -42,13 +42,20 @@ class DecoderAdaINBase(DecoderBase):
         architecture = adain_net_config.pop('architecture')
         num_adain_params = self._calc_adain_params()
         adain_net_config['output_dim'] = num_adain_params
-        self.adain_net = getattr(hidt.networks.blocks.modules, architecture)(**adain_net_config)
+        self.adain_net = getattr(
+            hidt.networks.blocks.modules, architecture)(**adain_net_config)
         self.style_dim = adain_net_config['input_dim']
         self.pred_adain_params = 'adain' == kwargs['res_norm'] or 'adain' == kwargs['up_norm'] or 'adain' == kwargs[
             'norm_after_conv']
 
     def _calc_adain_params(self):
         return self.get_num_adain_params(self)
+
+    def set_style(self, style_tensor):
+        self.style_tensor = style_tensor
+        if self.pred_adain_params:
+            adain_params = self.adain_net(style_tensor)
+            self.assign_adain_params(adain_params, self)
 
     @staticmethod
     def get_num_adain_params(model):
@@ -84,7 +91,8 @@ class DecoderAdaINBase(DecoderBase):
 class DecoderAdaINConvBase(DecoderAdaINBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.pred_conv_kernel = 'conv_kernel' == kwargs['res_norm'] or 'conv_kernel' == kwargs['up_norm'] or 'WCT' == kwargs['res_norm']
+        self.pred_conv_kernel = 'conv_kernel' == kwargs[
+            'res_norm'] or 'conv_kernel' == kwargs['up_norm'] or 'WCT' == kwargs['res_norm']
 
     @staticmethod
     def assign_style(style, model):
@@ -95,7 +103,8 @@ class DecoderAdaINConvBase(DecoderAdaINBase):
 
     def forward(self, content_tensor, style_tensor, spade_input=None):
         if self.pred_conv_kernel:
-            assert style_tensor.size(0) == 1, 'prediction of convilution does not work with batch size > 1'
+            assert style_tensor.size(
+                0) == 1, 'prediction of convilution does not work with batch size > 1'
             self.assign_style(style_tensor.view(1, -1), self)
         return super().forward(content_tensor, style_tensor, spade_input)
 
@@ -109,7 +118,6 @@ class DecoderUnet(DecoderAdaINConvBase):
                                 activation=kwargs['activ'],
                                 pad_type=kwargs['pad_type'],
                                 style_dim=kwargs.get('style_dim', 3))]
-
         self.upsample_postprocess = nn.ModuleList()
         self.skip_preprocess = nn.ModuleList()
 
@@ -128,7 +136,8 @@ class DecoderUnet(DecoderAdaINConvBase):
                             activation=kwargs['activ'],
                             pad_type=kwargs['pad_type'],
                             style_dim=kwargs.get('style_dim', 3),
-                            norm_after_conv=kwargs.get('norm_after_conv', 'ln'),
+                            norm_after_conv=kwargs.get(
+                                'norm_after_conv', 'ln'),
                             )]
             if kwargs['num_res_conv']:
                 current_upsample_postprocess += [ResBlocks(kwargs['num_res_conv'],
@@ -136,8 +145,10 @@ class DecoderUnet(DecoderAdaINConvBase):
                                                            norm=kwargs['up_norm'],
                                                            activation=kwargs['activ'],
                                                            pad_type=kwargs['pad_type'],
-                                                           style_dim=kwargs.get('style_dim', 3),
-                                                           norm_after_conv=kwargs.get('norm_after_conv', 'ln'),
+                                                           style_dim=kwargs.get(
+                                                               'style_dim', 3),
+                                                           norm_after_conv=kwargs.get(
+                                                               'norm_after_conv', 'ln'),
                                                            )]
 
             current_skip_preprocess = [Conv2dBlock(skip_dim[i],
@@ -145,11 +156,14 @@ class DecoderUnet(DecoderAdaINConvBase):
                                                    norm=kwargs['res_norm'],
                                                    activation=kwargs['activ'],
                                                    pad_type=kwargs['pad_type'],
-                                                   style_dim=kwargs.get('style_dim', 3),
-                                                   norm_after_conv=kwargs.get('norm_after_conv', 'ln'),
+                                                   style_dim=kwargs.get(
+                                                       'style_dim', 3),
+                                                   norm_after_conv=kwargs.get(
+                                                       'norm_after_conv', 'ln'),
                                                    )]
 
-            self.upsample_postprocess += [nn.Sequential(*current_upsample_postprocess)]
+            self.upsample_postprocess += [
+                nn.Sequential(*current_upsample_postprocess)]
             self.skip_preprocess += [nn.Sequential(*current_skip_preprocess)]
             dim //= 2
 
@@ -165,7 +179,8 @@ class DecoderUnet(DecoderAdaINConvBase):
             self.assign_adain_params(adain_params, self)
 
         if self.pred_conv_kernel:
-            assert style_tensor.size(0) == 1, 'prediction of convilution does not work with batch size > 1'
+            assert style_tensor.size(
+                0) == 1, 'prediction of convilution does not work with batch size > 1'
             self.assign_style(style_tensor.view(1, -1), self)
 
         tensor = module_list_forward(self.body, content_list[0], spade_input)
@@ -177,5 +192,6 @@ class DecoderUnet(DecoderAdaINConvBase):
             skip_tensor = skip_preprocess_layer(skip_content)
             tensor = torch.cat([tensor, skip_tensor], 1)
             tensor = up_postprocess_layer(tensor)
-        tensor = module_list_forward(self.model_postprocess, tensor, spade_input)
+        tensor = module_list_forward(
+            self.model_postprocess, tensor, spade_input)
         return tensor
