@@ -33,8 +33,9 @@ class AdaptiveInstanceNorm2d(nn.Module):
         x_reshaped = x.contiguous().view(1, b * c, *x.size()[2:])
         out = F.instance_norm(
             x_reshaped, momentum=self.momentum, eps=self.eps)
-        weight = self.weight.view(1, c, 1, 1)
-        bias = self.bias.view(1, c, 1, 1)
+        weight = self.weight.repeat(b).view(1, b * c, 1, 1)
+        bias = self.bias.repeat(b).view(1, b * c, 1, 1)
+        # print(out.shape, weight.shape, bias.shape)
         out = out * weight + bias
         return out.view(b, c, *x.size()[2:])
 

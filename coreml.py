@@ -91,7 +91,7 @@ def type_as(context, node):
     context.add(mb.cast(x=inputs[0], dtype='fp32'), node.name)
 
 
-class HiDT(nn.Module):
+class HiDT(torch.nn.Module):
     def __init__(self):
         super().__init__()
         with torch.no_grad():
@@ -105,18 +105,27 @@ class HiDT(nn.Module):
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
         self.style_transformer = style_transformer
+        self.enhancer = RRDBNet(
+            in_nc=48, out_nc=3, nf=64, nb=5, gc=32).to(device)
+        self.enhancer.load_state_dict(torch.load(enhancer_weights))
 
     def forward(self, content, style_to_transfer):
-        style_to_transfer = style_to_transfer.view(1, 1, 3, 1).to(device)
-        content = self.transform(content)
-        content = content.view(1, *content.shape)
+        [c, h, w] = content.shape
+        h = h // 4
+        w = w // 4
+        content = content.reshape(c, h * 4, w, 4).transpose(2, 3).reshape(c, h, 4*4, w).transpose(1, 2).reshape(
+            3, 16, h, w).transpose(0, 1).reshape(4, 4, c, h, w).transpose(0, 1).reshape(16, c, h, w)
+        style_to_transfer = style_to_transfer.view(1, 1, 3, 1)
         encoding_fn = self.style_transformer.trainer.gen.content_encoder
+        content = self.transform(content)
         content_decomposition = encoding_fn(content)
         decoder_input = {'content': content_decomposition[0],
                          'intermediate_outputs': content_decomposition[1:],
-                         'style': style_to_transfer}
+                         'style': style_to_transfer.repeat(16, 1, 1, 1)}
         transferred = self.style_transformer.trainer.gen.decode(decoder_input)[
             'images']
+        transferred = enhancement_preprocessing(transferred, normalize=False)
+        transferred = self.enhancer(transferred)
         transferred = (transferred.clamp(-1.0, 1.0) + 1.) / 2.
         return transferred
 
@@ -127,12 +136,15 @@ styles = {style.split(',')[0]: torch.tensor([float(el) for el in style.split(
     ',')[1][1:-1].split(' ')]) for style in styles.split('\n')[:-1]}
 image = Image.open(image_path)
 
+
 # Select the style, or define any vector you want
-style_to_transfer = styles['sunset_hard_harder']
+style_to_transfer = styles['sunset_hard_harder'].to(device)
 image = transforms.Compose([
+    transforms.Lambda(lambda img: __scale_shorter(img,
+                                                  inference_size * 4, Image.BICUBIC)),
     transforms.ToTensor(),
 ])(image)
-transforms.ToPILImage()(image).save("original.jpg")
+
 with torch.no_grad():
     hidt = HiDT()
     hidt.eval()
@@ -143,10 +155,10 @@ with torch.no_grad():
     for param in hidt.style_transformer.trainer.parameters():
         param.requires_grad = False
 
-transferred = hidt(image, style_to_transfer)
-print(transferred.shape)
-transferred = transforms.ToPILImage()(transferred[0])
-transferred.save("transferred.jpg")
+# transferred = hidt(image, style_to_transfer)
+# print(transferred.shape)
+# transferred = transforms.ToPILImage()(transferred[0])
+# transferred.save("transferred.jpg")
 
 # traced_model.save("~/hidt.pt")
 
