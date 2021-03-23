@@ -149,16 +149,17 @@ class GridCrop:
         return output
 
 
-def enhancement_preprocessing(transferred_crops: List[torch.Tensor], normalize: bool = True) -> torch.Tensor:
+def enhancement_preprocessing(transferred_crops: torch.Tensor, normalize: bool = True) -> torch.Tensor:
     enh_norm = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     padded_stack = []
-    for idx, transferred_crop in enumerate(transferred_crops):
+    n, c, w, h = transferred_crops.shape
+    for idx in range(n):
+        transferred_crop = transferred_crops[idx]
         hor_idx = idx // 4
         vert_idx = idx % 4
-        c, w, h = transferred_crop.shape
         padded_image = __padd_with_idxs(F.interpolate(transferred_crop[None, :, :, :],
-                                                      size=(int(w * 4),
-                                                            int(h * 4)),
+                                                      size=(w * 4,
+                                                            h * 4),
                                                       mode='nearest'),
                                         vert_idx,
                                         hor_idx,
@@ -202,7 +203,6 @@ def __scale_width(img, target_width, method=Image.BICUBIC):
         return img
     w = target_width
     h = int(target_width * oh / ow)
-    print("__scale_width", w, h)
     return img.resize((w, h), method)
 
 
